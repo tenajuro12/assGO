@@ -1,13 +1,20 @@
 package data
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var (
+	ErrRecordNotFound = errors.New("record not found")
+)
 
 type ModuleInfo struct {
 	ID             int       `json:"id"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 	ModuleName     string    `json:"module_name"`
-	ModuleDuration int       `json:"module_duration"`
+	ModuleDuration int32     `json:"module_duration"`
 	ExamType       string    `json:"exam_type"`
 	Version        string    `json:"version"`
 }

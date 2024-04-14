@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
+	"github.com/tenajuro12/assGO/internal/validator"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -23,13 +25,8 @@ func (app *application) readIDParam(r *http.Request) (int64, error) {
 func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	maxBytes := 1_048_576
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
-	// Initialize the json.Decoder, and call the DisallowUnknownFields() method on it
-	// before decoding. This means that if the JSON from the client now includes any
-	// field which cannot be mapped to the target destination, the decoder will return
-	// an error instead of just ignoring the field.
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	// Decode the request body to the destination.
 	err := dec.Decode(dst)
 	if err != nil {
 		var syntaxError *json.SyntaxError
@@ -74,4 +71,42 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 		return errors.New("body must only contain a single JSON value")
 	}
 	return nil
+}
+
+func (app *application) readString(qs url.Values, key string, defaultValue string) string {
+	// Extract the value for a given key from the query string. If no key exists this
+	// will return the empty string "".
+	s := qs.Get(key)
+	// If no key exists (or the value is empty) then return the default value.
+	if s == "" {
+		return defaultValue
+	}
+	// Otherwise return the string.
+	return s
+}
+
+func (app *application) readCSV(qs url.Values, key string, defaultValue []string) []string {
+	// Extract the value from the query string.
+	csv := qs.Get(key)
+	// If no key exists (or the value is empty) then return the default value.
+	if csv == "" {
+		return defaultValue
+	}
+	// Otherwise parse the value into a []string slice and return it.
+	return strings.Split(csv, ",")
+}
+
+func (app *application) readInt(qs url.Values, key string, defaultValue int, v *validator.Validator) int {
+	s := qs.Get(key)
+
+	if s == "" {
+		return defaultValue
+	}
+
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		v.AddError(key, "must be an integer value")
+		return defaultValue
+	}
+	return i
 }
