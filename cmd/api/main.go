@@ -5,6 +5,8 @@ import (
 	"database/sql" // New import
 	"flag"
 	"fmt"
+	_ "github.com/lib/pq"
+	"github.com/tenajuro12/assGO/internal/data"
 	"log"
 	"net/http"
 	"os"
@@ -23,6 +25,7 @@ type config struct {
 type application struct {
 	config config
 	logger *log.Logger
+	models data.Models
 }
 
 func main() {
@@ -30,7 +33,7 @@ func main() {
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 
-	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://postgres:123456@localhost/greenlight", "PostgreSQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://postgres:123456@localhost/t.SabyrovDB", "PostgreSQL DSN")
 	flag.Parse()
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
@@ -45,7 +48,7 @@ func main() {
 	app := &application{
 		config: cfg,
 		logger: logger,
-		mode:   data.(db),
+		models: data.NewModels(db),
 	}
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
@@ -62,7 +65,7 @@ func main() {
 
 func openDB(cfg config) (*sql.DB, error) {
 
-	db, err := sql.Open("postgres", "postgres://postgres:123456@localhost/greenlight?sslmode=disable")
+	db, err := sql.Open("postgres", "postgres://postgres:123456@localhost/t.SabyrovDB?sslmode=disable")
 	if err != nil {
 		return nil, err
 	}

@@ -1,14 +1,20 @@
 package data
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type DBModel struct {
 	DB *sql.DB
 }
+type Models struct {
+	ModuleInfo DBModel
+}
 
-func (m *DBModel) Insert(moduleInfo *ModuleInfo) error {
-	// Implement the insert logic here
-	return nil
+func NewModels(db *sql.DB) Models {
+	return Models{
+		ModuleInfo: DBModel{DB: db},
+	}
 }
 
 // Retrieve retrieves data from the specified table in the database.
@@ -27,4 +33,11 @@ func (m *DBModel) Update(moduleInfo *ModuleInfo) error {
 func (m *DBModel) Delete(moduleInfo *ModuleInfo) error {
 	// Implement the delete logic here
 	return nil
+}
+
+func (m DBModel) Insert(module *ModuleInfo) error {
+
+	query := `INSERT INTO module_info (module_name, module_duration, exam_type,version)VALUES ($1, $2, $3, $4)RETURNING id, created_at, updated_at, version`
+	args := []any{module.ModuleName, module.ModuleDuration, module.ExamType}
+	return m.DB.QueryRow(query, args...).Scan(&module.ID, &module.CreatedAt, &module.UpdatedAt, &module.Version)
 }
