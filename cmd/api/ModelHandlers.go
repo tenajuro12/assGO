@@ -14,6 +14,7 @@ func (app *application) createModuleHandler(w http.ResponseWriter, r *http.Reque
 		Module_duration int32  `json:"module_duration"`
 		ExamType        string `json:"exam_type"`
 	}
+
 	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
@@ -126,37 +127,45 @@ func (app *application) deleteModuleHandler(w http.ResponseWriter, r *http.Reque
 		}
 		return
 	}
-	// Return a 200 OK status code along with a success message.
 	err = app.writeJSON(w, http.StatusOK, envelope{"message": "movie successfully deleted"}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
-
 func (app *application) listModuleHandler(w http.ResponseWriter, r *http.Request) {
+
 	var input struct {
-		Module_name string
-		ExamType    string
-		Page        int
-		PageSize    int
-		Sort        string
+		ModuleName string
+		ExamType   string
+		data.Filters
 	}
 	v := validator.New()
 
 	qs := r.URL.Query()
-	input.Module_name = app.readString(qs, "title", "")
-	input.ExamType = app.readString(qs, "title", "")
+
+	input.ModuleName = app.readString(qs, "module_name", "")
+	input.ExamType = app.readString(qs, "exam_type", "")
 
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
-	// Read the sort query string value into the embedded struct.
+
 	input.Filters.Sort = app.readString(qs, "sort", "id")
 
-	if !v.Valid() {
+	input.Filters.SortSafelist = []string{"id", "module_name", "module_duration", "-id", "-module_name", "-module_duration"}
+
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	// Dump the contents of the input struct in a HTTP response.
-	fmt.Fprintf(w, "%+v\n", input)
+	module_info, err := app.models.ModuleInfo.GetAll(input.ModuleName, input.ExamType, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	err = app.writeJSON(w, http.StatusOK, envelope{"module_info": module_info}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 
+	fmt.Fprintf(w, "%+v\n", input)
 }
