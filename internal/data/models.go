@@ -136,3 +136,47 @@ func (m DBModel) GetAll(module_name string, exam_type string, filters Filters) (
 	}
 	return module_info, nil
 }
+
+func (m DBModel) GetTeachers(name string, surname string, filters Filters) ([]*teachers_info, error) {
+
+	query := fmt.Sprintf(`SELECT id, name, surname, email, modules,
+	FROM teachers_info
+	WHERE (to_tsvector('simple', name) @@ plainto_tsquery('simple', $1) OR $1 = '')
+	AND  (LOWER(surname) = LOWER($2) OR $2 = '')
+	ORDER BY  %s %s, id ASC
+	LIMIT $3 OFFSET $4`, filters.sortColumn(), filters.sortDirection())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	args := []any{name, surname, filters.limit(), filters.offset()}
+	rows, err := m.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	teacher_info := []*teachers_info{}
+
+	for rows.Next() {
+		var teachers_info teachers_info
+
+		err := rows.Scan(
+			&teachers_info.ID,
+			&teachers_info.Name,
+			&teachers_info.Surname,
+			&teachers_info.Email,
+			&teachers_info.Module,
+		)
+		if err != nil {
+			return nil, err
+		}
+		teacher_info = append(teacher_info, &teachers_info)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return teacher_info, nil
+}
