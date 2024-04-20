@@ -32,7 +32,7 @@ func (app *application) listTeacherHandler(w http.ResponseWriter, r *http.Reques
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	teachers_info, err := app.models.GetTeachers(input.Name, input.Surname, input.Filters)
+	teachers_info, err := app.models.ModuleInfo.GetTeachers(input.Name, input.Surname, input.Filters)
 
 	if err != nil {
 		app.serverErrorResponse(w, r, err)

@@ -26,6 +26,7 @@ type application struct {
 	config config
 	logger *log.Logger
 	models data.Models
+	model2 data.TeacherModel
 }
 
 func main() {
@@ -49,6 +50,7 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
+		model2: data.NewModel1(db),
 	}
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),

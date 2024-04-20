@@ -139,7 +139,7 @@ func (m DBModel) GetAll(module_name string, exam_type string, filters Filters) (
 
 func (m DBModel) GetTeachers(name string, surname string, filters Filters) ([]*teachers_info, error) {
 
-	query := fmt.Sprintf(`SELECT id, name, surname, email, modules,
+	query := fmt.Sprintf(`SELECT id, name, surname, email, modules
 	FROM teachers_info
 	WHERE (to_tsvector('simple', name) @@ plainto_tsquery('simple', $1) OR $1 = '')
 	AND  (LOWER(surname) = LOWER($2) OR $2 = '')
