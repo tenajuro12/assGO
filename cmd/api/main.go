@@ -47,7 +47,6 @@ func main() {
 
 	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://postgres:123456@localhost/t.SabyrovDB", "PostgreSQL DSN")
 
-	// with your own Mailtrap credentials.
 	flag.StringVar(&cfg.smtp.host, "smtp-host", "smtp.mailtrap.io", "SMTP host")
 	flag.IntVar(&cfg.smtp.port, "smtp-port", 25, "SMTP port")
 	flag.StringVar(&cfg.smtp.username, "smtp-username", "e15bfd94a62406", "SMTP username")

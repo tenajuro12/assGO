@@ -25,9 +25,9 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.createAuthenticationTokenHandler)
 
 	router.HandlerFunc(http.MethodGet, "/v1/getUser/:id", app.requireActivatedUser(app.requirePermission("users:read", app.getUserHandler)))
-	router.HandlerFunc(http.MethodGet, "/v1/getUser", app.requireActivatedUser(app.listUserHandler))
-	router.HandlerFunc(http.MethodPut, "/v1/updateUser/:id", app.requireActivatedUser(app.editUserHandler))
-	router.HandlerFunc(http.MethodDelete, "/v1/deleteUser/:id", app.requireActivatedUser(app.deleteUserHandler))
+	router.HandlerFunc(http.MethodGet, "/v1/getUser", app.requireActivatedUser(app.requirePermission("users:read", app.listUserHandler)))
+	router.HandlerFunc(http.MethodPut, "/v1/updateUser/:id", app.requireActivatedUser(app.requirePermission("users:write", app.editUserHandler)))
+	router.HandlerFunc(http.MethodDelete, "/v1/deleteUser/:id", app.requireActivatedUser(app.requirePermission("users:write", app.deleteUserHandler)))
 
 	return app.recoverPanic(app.authenticate(router))
 }
