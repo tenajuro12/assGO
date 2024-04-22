@@ -1,6 +1,9 @@
 package data
 
 import (
+	"context"
+	"crypto/sha256"
+	"database/sql"
 	"errors"
 	"github.com/tenajuro12/assGO/internal/validator"
 	"golang.org/x/crypto/bcrypt"
@@ -19,6 +22,8 @@ type User struct {
 	Activated bool      `json:"activated"`
 	Version   int       `json:"-"`
 }
+
+var AnonymousUser = &User{}
 
 type password struct {
 	plaintext *string
@@ -74,4 +79,53 @@ func ValidateUser(v *validator.Validator, user *User) {
 	if user.Password.hash == nil {
 		panic("missing password hash for user")
 	}
+}
+
+func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error) {
+
+	tokenHash := sha256.Sum256([]byte(tokenPlaintext))
+
+	query := `
+		SELECT id, created_at, fname, sname, email, password_hash, user_role, activated, version
+		FROM user_info
+		INNER JOIN tokens
+		ON user_info.id = tokens.user_id
+		WHERE tokens.hash = $1
+		AND tokens.scope = $2
+		AND tokens.expiry > $3
+	`
+
+	args := []any{tokenHash[:], tokenScope, time.Now()}
+
+	var user User
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, query, args...).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.FName,
+		&user.SName,
+		&user.Email,
+		&user.Password.hash,
+		&user.UserRole,
+		&user.Activated,
+		&user.Version,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &user, nil
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }

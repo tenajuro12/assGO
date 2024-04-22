@@ -35,7 +35,7 @@ func (m UserModel) Insert(user *User) error {
 	return nil
 }
 
-func (m UserModel) getByEmail(email string) (*User, error) {
+func (m UserModel) GetByEmail(email string) (*User, error) {
 	query := `SELECT id, created_at, updated_at, fname, sname, email, password_hash, user_role, activated, version
     FROM user_info
     WHERE email = $1`
@@ -72,7 +72,7 @@ func (m UserModel) Update(user *User) error {
 	query := `
 UPDATE user_info
 SET fname = $1, sname = $2, email = $3, password_hash = $4, activated=$5, version = version + 1
-WHERE id = $5 AND version = $6
+WHERE id = $6 AND version = $7
 RETURNING version`
 	args := []any{
 		user.FName,
@@ -97,4 +97,55 @@ RETURNING version`
 		}
 	}
 	return nil
+}
+
+func (m UserModel) GetUser(id int64) (*User, error) {
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+	query := `SELECT id, created_at, fname, sname, email, user_role, activated, version FROM user_info WHERE id = $1`
+	var user User
+
+	err := m.DB.QueryRow(query, id).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.FName,
+		&user.SName,
+		&user.Email,
+		&user.UserRole,
+		&user.Activated,
+		&user.Version,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	return &user, nil
+}
+
+func (m UserModel) DeleteUser(id int64) error {
+	if id < 1 {
+		return ErrRecordNotFound
+	}
+
+	query := `DELETE FROM user_info WHERE id = $1`
+	result, err := m.DB.Exec(query, id)
+
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
+	return nil
+
 }

@@ -11,19 +11,24 @@ import (
 type DBModel struct {
 	DB *sql.DB
 }
-type Models struct {
-	ModuleInfo DBModel
-	Users      UserModel  // Add a new Users field.
-	Tokens     TokenModel // Add a new Tokens field.
 
+var (
+	ErrEditConflict = errors.New("edit conflict")
+)
+
+type Models struct {
+	ModuleInfo  DBModel
+	Users       UserModel
+	Tokens      TokenModel
+	Permissions PermissionModel
 }
 
 func NewModels(db *sql.DB) Models {
 	return Models{
-		ModuleInfo: DBModel{DB: db},
-		Users:      UserModel{DB: db},  // Initialize a new UserModel instance.
-		Tokens:     TokenModel{DB: db}, // Initialize a new TokenModel instance.
-
+		ModuleInfo:  DBModel{DB: db},
+		Users:       UserModel{DB: db},
+		Tokens:      TokenModel{DB: db},
+		Permissions: PermissionModel{DB: db},
 	}
 }
 
@@ -185,4 +190,52 @@ func (m DBModel) GetTeachers(name string, surname string, filters Filters) ([]*t
 		return nil, err
 	}
 	return teacher_info, nil
+}
+
+func (m UserModel) GetAllUser(fname string, sname string, filters Filters) ([]*User, error) {
+
+	query := fmt.Sprintf(`
+    SELECT id, created_at, fname, sname, email, activated, version
+    FROM user_info
+    WHERE (to_tsvector('simple', fname) @@ plainto_tsquery('simple', $1) OR $1 = '')
+        AND (LOWER(sname) = LOWER($2) OR $2 = '')
+	Order By %s  %s, id ASC
+    LIMIT $3 OFFSET $4`,
+		filters.sortColumn(), filters.sortDirection())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	args := []any{fname, sname, filters.limit(), filters.offset()}
+	rows, err := m.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	user := []*User{}
+
+	for rows.Next() {
+		var users User
+
+		err := rows.Scan(
+			&users.ID,
+			&users.CreatedAt,
+			&users.SName,
+			&users.FName,
+			&users.Email,
+			&users.Activated,
+			&users.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+		user = append(user, &users)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return user, nil
 }

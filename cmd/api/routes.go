@@ -5,9 +5,8 @@ import (
 	"net/http"
 )
 
-func (app *application) routes() *httprouter.Router {
+func (app *application) routes() http.Handler {
 	router := httprouter.New()
-	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 
@@ -22,5 +21,13 @@ func (app *application) routes() *httprouter.Router {
 
 	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
 
-	return router
+	router.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUserHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.createAuthenticationTokenHandler)
+
+	router.HandlerFunc(http.MethodGet, "/v1/getUser/:id", app.requireActivatedUser(app.requirePermission("users:read", app.getUserHandler)))
+	router.HandlerFunc(http.MethodGet, "/v1/getUser", app.requireActivatedUser(app.listUserHandler))
+	router.HandlerFunc(http.MethodPut, "/v1/updateUser/:id", app.requireActivatedUser(app.editUserHandler))
+	router.HandlerFunc(http.MethodDelete, "/v1/deleteUser/:id", app.requireActivatedUser(app.deleteUserHandler))
+
+	return app.recoverPanic(app.authenticate(router))
 }
